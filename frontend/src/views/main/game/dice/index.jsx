@@ -1,0 +1,671 @@
+import { Box, Button, Slider } from "@mui/material";
+import { makeStyles } from "@mui/styles";
+import clsx from "clsx";
+import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
+import DiceL from "./utils/DiceL";
+import DiceR from "./utils/DiceR";
+import HistoryItem from "./utils/HistoryItem";
+import { useToasts } from "react-toast-notifications";
+import HistoryBox from "./utils/HistoryBox";
+import FlipMove from "react-flip-move";
+import EmptyItem from "./utils/EmptyItem";
+import { LoadingButton } from "@mui/lab";
+import { useRef } from "react";
+import SettingBox from "views/components/setting";
+import BackButton from "components/BackButton";
+import useSound from "use-sound";
+import bgSound from "assets/sounds/bitkong/bg.mp3";
+import clickSound from "assets/sounds/bitkong/cell-click.mp3";
+import lostSound from "assets/sounds/bitkong/lost.mp3";
+import profitSound from "assets/sounds/bitkong/profit.mp3";
+import { useOneDeal } from "hooks/useOneDeal";
+import { useCurrentAccount } from "@onelabs/dapp-kit";
+
+const ChanceData = [
+    { over: 3, under: 11, multiplier: 1.03, chance: 91.67 },
+    { over: 4, under: 10, multiplier: 1.14, chance: 83.33 },
+    { over: 5, under: 9, multiplier: 1.31, chance: 72.22 },
+    { over: 6, under: 8, multiplier: 1.62, chance: 58.33 },
+    { over: 7, under: 7, multiplier: 2.28, chance: 41.67 },
+    { over: 8, under: 6, multiplier: 3.42, chance: 27.78 },
+    { over: 9, under: 5, multiplier: 5.70, chance: 16.67 },
+    { over: 10, under: 4, multiplier: 11.40, chance: 8.33 },
+    { over: 11, under: 3, multiplier: 34.20, chance: 2.78 }
+];
+
+const useStyles = makeStyles(() => ({
+    MainContainer: {
+        width: '100%',
+        paddingRight: '50px',
+        "@media (max-width: 940px)": {
+            padding: '0px'
+        }
+    },
+    GamePanelBox: {
+        width: '100%',
+        height: '829px',
+        borderRadius: '30px',
+        backgroundImage: 'url("/assets/images/dice/background.png")',
+        backgroundSize: 'cover',
+        backgroundPosition: '50% 50%',
+        position: 'relative',
+        overflow: 'hidden',
+        "@media (max-width: 940px)": {
+            borderRadius: '0px',
+        },
+        "@media (max-width: 681px)": {
+            height: '641px'
+        }
+    },
+    DicePanelBox: {
+        position: 'absolute',
+        backgroundImage: 'url("/assets/images/dice/PanelBg.png")',
+        width: '586px',
+        height: '842px',
+        top: '65px',
+        backgroundSize: 'cover',
+        left: 'calc((100% - 586px) / 2)',
+        "@media (max-width: 681px)": {
+            backgroundImage: 'url("/assets/images/dice/PanelBgMobile.png")',
+            width: 'calc(100vw - 30px)',
+            left: '15px',
+            backgroundSize: '100% 100%',
+            height: '552px'
+        }
+    },
+    WolfImage: {
+        position: 'absolute',
+        width: '284px',
+        top: '331px',
+        left: 'calc((100% - 284px) / 2 - 460px)'
+    },
+    ManImage: {
+        position: 'absolute',
+        width: '717px',
+        top: '8px',
+        right: 'calc((100% - 717px) / 2 - 363px)'
+    },
+    HistoryBox: {
+        width: '100%',
+        display: 'flex',
+        gap: '5px',
+        height: '42px',
+        overflow: 'hidden',
+        justifyContent: 'flex-end',
+        "@media (max-width: 681px)": {
+            height: '34px'
+        }
+    },
+    DiceBox: {
+        width: '100%',
+        backgroundImage: 'url("/assets/images/dice/DicePanel.png")',
+        height: '230.7px',
+        backgroundSize: '100% 100%',
+        marginTop: '21px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        "@media (max-width: 681px)": {
+            marginTop: '17px',
+            height: '184px'
+        }
+    },
+    Dices: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '10px'
+    },
+    BottomBox: {
+        width: '190px',
+        height: '9px',
+        background: '#FDF6CB',
+        "@media (max-width: 681px)": {
+            width: '150px',
+            height: '7px'
+        }
+    },
+    SubBox: {
+        marginTop: '11px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        "@media (max-width: 681px)": {
+            marginTop: '9px'
+        }
+    },
+    MultipleBox: {
+        width: 'calc(50% - 4px)',
+        height: '31px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0px 14px',
+        backgroundImage: 'url("/assets/images/dice/MultipleBg.png")',
+        backgroundSize: '100% 100%',
+        "&>span": {
+            fontFamily: "'Styrene A Web'",
+            fontStyle: "normal",
+            fontWeight: 700,
+            fontSize: "12px",
+            lineHeight: "15px",
+            color: "#FFFFFF"
+        },
+        "@media (max-width: 681px)": {
+            height: '25px'
+        }
+    },
+    ChanceBox: {
+        width: 'calc(50% - 4px)',
+        height: '31px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0px 14px',
+        backgroundImage: 'url("/assets/images/dice/ChanceBg.png")',
+        backgroundSize: '100% 100%',
+        "&>span": {
+            fontFamily: "'Styrene A Web'",
+            fontStyle: "normal",
+            fontWeight: 700,
+            fontSize: "12px",
+            lineHeight: "15px",
+            color: "#FFFFFF"
+        },
+        "@media (max-width: 681px)": {
+            height: '24px'
+        }
+    },
+    PayoutBox: {
+        width: '100%',
+        height: '31px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0px 14px',
+        backgroundImage: 'url("/assets/images/dice/PayoutBg.png")',
+        backgroundSize: '100% 100%',
+        "&>span": {
+            fontFamily: "'Styrene A Web'",
+            fontStyle: "normal",
+            fontWeight: 700,
+            fontSize: "12px",
+            lineHeight: "15px",
+            color: "#FFFFFF"
+        },
+        "@media (max-width: 681px)": {
+            height: '25px'
+        }
+    },
+    DeactiveUnderBox: {
+        backgroundImage: 'url("/assets/images/dice/UnderBg1.png") !important',
+        opacity: '0.5'
+    },
+    UnderBox: {
+        width: 'calc(50% - 4px)',
+        height: '55px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '0px 14px',
+        backgroundImage: 'url("/assets/images/dice/UnderBg.png")',
+        backgroundSize: '100% 100%',
+        "&>span": {
+            fontFamily: "'Styrene A Web'",
+            fontStyle: "normal",
+            fontWeight: 700,
+            fontSize: "17px",
+            lineHeight: "22px",
+            color: "#FFFFFF"
+        },
+        "&>label": {
+            fontFamily: "'Styrene A Web'",
+            fontStyle: "normal",
+            fontWeight: 700,
+            fontSize: "12px",
+            lineHeight: "11px",
+            color: "#FFFFFF"
+        },
+        "@media (max-width: 681px)": {
+            height: '44px'
+        }
+    },
+    DeactiveOverBox: {
+        backgroundImage: 'url("/assets/images/dice/OverBg1.png") !important',
+    },
+    OverBox: {
+        width: 'calc(50% - 4px)',
+        height: '55px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '0px 14px',
+        backgroundImage: 'url("/assets/images/dice/OverBg.png")',
+        backgroundSize: '100% 100%',
+        "&>span": {
+            fontFamily: "'Styrene A Web'",
+            fontStyle: "normal",
+            fontWeight: 700,
+            fontSize: "17px",
+            lineHeight: "22px",
+            color: "#FFFFFF"
+        },
+        "&>label": {
+            fontFamily: "'Styrene A Web'",
+            fontStyle: "normal",
+            fontWeight: 700,
+            fontSize: "12px",
+            lineHeight: "11px",
+            color: "#FFFFFF"
+        },
+        "@media (max-width: 681px)": {
+            height: '44px'
+        }
+    },
+    SliderBox: {
+        marginTop: '12px',
+        width: '100%',
+        height: '54px',
+        backgroundColor: '#424253',
+        padding: '16px 16px 0px 22px',
+        "@media (max-width: 681px)": {
+            height: '43px',
+            padding: '12px 13px 0px 17px',
+            marginTop: '9px'
+        }
+    },
+    CustomSlider: {
+        padding: '0px',
+        height: '8px',
+        "& .MuiSlider-thumb": {
+            width: '44px',
+            height: '50px',
+            backgroundImage: 'url("/assets/images/dice/Spin-Thumb.png")',
+            backgroundSize: '100% 100%',
+            color: 'transparent',
+            '&:focus, &:hover, &.Mui-active': {
+                boxShadow: 'unset'
+            },
+            "&:before": {
+                content: 'unset'
+            },
+            "@media (max-width: 681px)": {
+                width: '35px',
+                height: '40px',
+            }
+        },
+        "& .MuiSlider-rail": {
+            color: '#101013'
+        }
+    },
+    PlayButton: {
+        width: '100%',
+        height: '51px',
+        backgroundImage: 'url("/assets/images/dice/PlayBg.png")',
+        backgroundSize: '100% 100%',
+        fontFamily: "'Styrene A Web'",
+        fontStyle: "normal",
+        fontWeight: 700,
+        fontSize: "17px",
+        lineHeight: "22px",
+        textAlign: "center",
+        textTransform: "uppercase",
+        color: "#FFFFFF",
+        "@media (max-width: 681px)": {
+            height: '41px'
+        }
+    },
+    AmountInputBox: {
+        backgroundImage: 'url("/assets/images/dice/InputBg.png")',
+        backgroundSize: '100% 100%',
+        height: '46px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        "@media (max-width: 681px)": {
+            height: '37px'
+        }
+    },
+    AmountInput: {
+        width: 'calc(100% - 221px)',
+        height: '100%',
+        border: 'none',
+        outline: 'none',
+        background: 'transparent',
+        fontFamily: "'Styrene A Web'",
+        fontStyle: "normal",
+        fontWeight: 700,
+        fontSize: "17px",
+        lineHeight: "21px",
+        textTransform: "uppercase",
+        color: "#FFFFFF",
+        marginLeft: '5px'
+    },
+    CoinItem: {
+        marginLeft: '16px',
+        width: '35px',
+        marginTop: '3px'
+    },
+    AmountActionBox: {
+        display: 'flex',
+        height: '100%'
+    },
+    AmountActionButton: {
+        backgroundColor: '#4D3C6A',
+        width: '55px',
+        minWidth: '55px',
+        borderRadius: '0px',
+        fontFamily: "'Styrene A Web'",
+        fontStyle: "normal",
+        fontWeight: 700,
+        fontSize: "14px",
+        lineHeight: "16px",
+        textTransform: "uppercase",
+        color: "#FFFFFF",
+        height: '100%'
+    },
+    AmountMiddleButton: {
+        backgroundColor: '#734FA1'
+    },
+    HistoryTable: {
+        marginTop: '24px'
+    },
+    MainPanelBox: {
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        padding: '24px 61px 0px 63px',
+        "@media (max-width: 681px)": {
+            padding: '18px 15px 0px'
+        }
+    }
+}));
+
+const Dice = () => {
+    const classes = useStyles();
+    const { addToast } = useToasts();
+
+    const account = useCurrentAccount();
+    const { playDice } = useOneDeal();
+
+    const settingData = useSelector((state) => state.settingOption);
+    const animation = settingData.animation;
+
+    const [playBgSound, bgSoundOption] = useSound(bgSound);
+    const [playClickSound] = useSound(clickSound);
+    const [playLostSound] = useSound(lostSound);
+    const [playProfitSound] = useSound(profitSound);
+
+    const step = 12.5;
+    const setting = { max: 1000, min: 1 };
+    const [sliderValue, setSliderValue] = useState(0);
+
+    const [isOver, setIsOver] = useState(true);
+    const [betAmount, setBetAmount] = useState(1);
+    const difficulty = parseInt(Number(sliderValue / step));
+
+    const [historyData, setHistoryData] = useState([]);
+    const [diceData, setDiceData] = useState({ l: 6, r: 6 });
+    const [playLoading, setPlayLoading] = useState(false);
+
+    const diceBottomRef = useRef();
+
+    useEffect(() => {
+        return () => {
+            bgSoundOption.stop();
+        };
+        // eslint-disable-next-line
+    }, []);
+
+    useEffect(() => {
+        if (settingData.sound && settingData.backgroundSound) {
+            playBgSound();
+        }
+        if (!settingData.sound || !settingData.backgroundSound) {
+            bgSoundOption.stop();
+        }
+        return () => {
+            bgSoundOption.stop();
+        }
+        // eslint-disable-next-line
+    }, [settingData]);
+
+    useEffect(() => {
+        if (betAmount > setting.max) {
+            setBetAmount(setting.max);
+        }
+        else if (betAmount < setting.min) {
+            setBetAmount(setting.min);
+        }
+        // eslint-disable-next-line
+    }, [betAmount]);
+
+    const handleChangeSlider = (_event, value) => {
+        setSliderValue(value)
+        playEffectSound(playClickSound);
+    };
+
+    const handleBetAmount = (e) => {
+        setBetAmount(e.target.value);
+    };
+
+    const handleAmountAction = (type) => {
+        switch (type) {
+            case 0:
+                setBetAmount(betAmount / 2);
+                break;
+            case 1:
+                setBetAmount(betAmount * 2);
+                break;
+            case 2:
+                setBetAmount(setting.max);
+                break;
+            default:
+                break;
+        }
+    };
+
+    const setOver = (flag) => {
+        setIsOver(flag);
+        playEffectSound(playClickSound);
+    };
+
+    const handlePlay = async () => {
+        if (!account) {
+            addToast('Please connect wallet', { appearance: 'warning', autoDismiss: true });
+            return;
+        }
+        
+        playEffectSound(playClickSound);
+        document.getElementsByClassName('DiceAnimContainer')[0].classList.remove('DiceAnimate');
+        diceBottomRef.current.style.backgroundColor = "#FDF6CB";
+        setPlayLoading(true);
+
+        try {
+            // 将 betAmount 转换为链上单位 (1 OCT = 1_000_000_000)
+            const betAmountInOCT = Math.floor(betAmount * 1_000_000_000);
+            
+            // 计算 target (0-10000)
+            // ChanceData 中的 over/under 是 3-11，需要映射到 0-10000
+            // 例如：over 7 表示结果 > 7，在 0-10000 范围内就是 > 5833 (7/12 * 10000)
+            // under 7 表示结果 < 7，在 0-10000 范围内就是 < 5833
+            const diceValue = isOver ? ChanceData[difficulty].over : ChanceData[difficulty].under;
+            const target = Math.floor((diceValue / 12) * 10000); // 将 2-14 的骰子范围映射到 0-10000
+            
+            console.log('Playing dice - bet:', betAmountInOCT, 'target:', target, 'isOver:', isOver);
+            
+            const result = await playDice(betAmountInOCT, target, isOver);
+            console.log('Dice result:', result);
+            
+            // 检查交易是否成功
+            if (result.effects?.status?.status !== 'success') {
+                throw new Error('Transaction failed: ' + (result.effects?.status?.error || 'Unknown error'));
+            }
+            
+            // 从事件中解析结果
+            const diceEvent = result.events?.find(e => 
+                e.type.includes('::casino::DiceResultEvent')
+            );
+            
+            console.log('Dice event:', diceEvent);
+            
+            if (diceEvent) {
+                const { result: diceResult, won, payout } = diceEvent.parsedJson;
+                
+                console.log('Dice game result - diceResult:', diceResult, 'won:', won, 'payout:', payout);
+                
+                // 将结果转换为两个骰子的点数
+                // diceResult 是 0-10000，映射回 2-14 的骰子总和
+                const total = Math.floor((diceResult / 10000) * 12) + 2; // 2-14
+                const l = Math.min(6, Math.max(1, Math.floor(total / 2)));
+                const r = Math.min(6, Math.max(1, total - l));
+                
+                if (animation) {
+                    document.getElementsByClassName('DiceAnimContainer')[0].classList.add('DiceAnimate');
+                }
+
+                const history = {
+                    countL: l,
+                    countR: r,
+                    win: won
+                };
+                
+                setDiceData({ l, r });
+                setHistoryData([...historyData, history]);
+                
+                playEffectSound(won ? playProfitSound : playLostSound);
+
+                setTimeout(() => {
+                    setPlayLoading(false);
+                    diceBottomRef.current.style.backgroundColor = won ? "#FDF6CB" : "#F00";
+                }, animation ? 300 : 0);
+
+                if (won) {
+                    addToast(`Won ${(payout / 1_000_000_000).toFixed(4)} OCT!`, { 
+                        appearance: 'success', 
+                        autoDismiss: true 
+                    });
+                } else {
+                    addToast('Better luck next time!', { 
+                        appearance: 'info', 
+                        autoDismiss: true 
+                    });
+                }
+            } else {
+                console.error('No dice event found in result');
+                setPlayLoading(false);
+                addToast('Failed to get game result', { 
+                    appearance: 'error', 
+                    autoDismiss: true 
+                });
+            }
+        } catch (error) {
+            console.error('Dice play error:', error);
+            setPlayLoading(false);
+            addToast(error.message || 'Transaction failed', { 
+                appearance: 'error', 
+                autoDismiss: true 
+            });
+        }
+    };
+
+    const playEffectSound = (soundPlay) => {
+        if (settingData.sound && settingData.effectSound) {
+            soundPlay();
+        }
+    };
+
+    return (
+        <Box className={classes.MainContainer}>
+            <BackButton />
+            <Box className={classes.GamePanelBox}>
+                <SettingBox />
+                <img src="/assets/images/dice/wolf.png" alt="wolf" className={classes.WolfImage} />
+                <img src="/assets/images/dice/man.png" alt="man" className={classes.ManImage} />
+                <Box className={classes.DicePanelBox}>
+                    <Box className={classes.MainPanelBox}>
+                        <FlipMove className={clsx(classes.HistoryBox, 'HistoryContainer')}>
+                            {
+                                historyData.length > 0 ?
+                                    historyData.map((item, index) => (
+                                        <Box key={index}>
+                                            <HistoryItem {...item} index={index} />
+                                        </Box>
+                                    ))
+                                    :
+                                    <Box key={0}>
+                                        <EmptyItem countL={6} countR={6} />
+                                    </Box>
+                            }
+                        </FlipMove>
+                        <Box className={classes.DiceBox}>
+                            <Box className={clsx(classes.Dices, "DiceAnimContainer")}>
+                                <DiceL count={diceData.l} />
+                                <DiceR count={diceData.r} />
+                            </Box>
+                            <Box className={classes.BottomBox} ref={diceBottomRef}></Box>
+                        </Box>
+                        <Box className={classes.SubBox}>
+                            <Box className={classes.MultipleBox}>
+                                <span>MULTIPLIER</span>
+                                <span>x{ChanceData[difficulty].multiplier}</span>
+                            </Box>
+                            <Box className={classes.ChanceBox}>
+                                <span>CHANCE</span>
+                                <span>{ChanceData[difficulty].chance}%</span>
+                            </Box>
+                        </Box>
+                        <Box className={classes.SubBox}>
+                            <Box className={classes.PayoutBox}>
+                                <span>PAYOUT</span>
+                                <span>{Number(betAmount * ChanceData[difficulty].multiplier).toFixed(2)}</span>
+                            </Box>
+                        </Box>
+                        <Box className={classes.SubBox}>
+                            <Button className={clsx(classes.UnderBox, isOver ? classes.DeactiveUnderBox : '')} onClick={() => setOver(false)}>
+                                <span>UNDER {ChanceData[difficulty].under}</span>
+                                <label>x{ChanceData[difficulty].multiplier}</label>
+                            </Button>
+                            <Button className={clsx(classes.OverBox, !isOver ? classes.DeactiveOverBox : '')} onClick={() => setOver(true)}>
+                                <span>OVER {ChanceData[difficulty].over}</span>
+                                <label>x{ChanceData[difficulty].multiplier}</label>
+                            </Button>
+                        </Box>
+                        <Box className={classes.SliderBox}>
+                            <Slider
+                                valueLabelDisplay="off"
+                                step={step}
+                                track={false}
+                                className={classes.CustomSlider}
+                                value={sliderValue}
+                                onChange={handleChangeSlider}
+                            />
+                        </Box>
+                        <Box className={classes.SubBox}>
+                            <LoadingButton loading={playLoading} className={classes.PlayButton} onClick={handlePlay}>PLAY</LoadingButton>
+                        </Box>
+                        <Box className={clsx(classes.SubBox, classes.AmountInputBox)}>
+                            <img src="/assets/images/coins/oct.png" alt="OCT" className={classes.CoinItem} />
+                            <input className={classes.AmountInput} type="number" value={betAmount} onChange={handleBetAmount} />
+                            <Box className={classes.AmountActionBox}>
+                                <Button onClick={() => handleAmountAction(0)} className={classes.AmountActionButton}>1/2</Button>
+                                <Button onClick={() => handleAmountAction(1)} className={clsx(classes.AmountActionButton, classes.AmountMiddleButton)}>2X</Button>
+                                <Button onClick={() => handleAmountAction(2)} className={classes.AmountActionButton}>Max</Button>
+                            </Box>
+                        </Box>
+                    </Box>
+                </Box>
+            </Box>
+            <Box className={classes.HistoryTable}>
+                <HistoryBox />
+            </Box>
+        </Box>
+    );
+};
+
+export default Dice;
