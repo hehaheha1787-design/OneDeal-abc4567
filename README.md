@@ -55,7 +55,7 @@ OneDeal/
 
 ```bash
 cd frontend
-npm install
+npm install --legacy-peer-deps
 npm start
 ```
 
