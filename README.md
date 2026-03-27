@@ -4,6 +4,9 @@
 
 OneDeal is a fully on-chain casino platform built on the OneChain blockchain, featuring provably fair games and transparent smart contract interactions.
 
+🌐 **Live Website**: [https://one-deal-gamma.vercel.app](https://one-deal-gamma.vercel.app)  
+🎥 **Demo Video**: [https://youtu.be/YMPhmQknOXA](https://youtu.be/YMPhmQknOXA)
+
 ---
 
 ## 🎮 Available Games
@@ -206,18 +209,6 @@ All game transactions are recorded on-chain and can be viewed:
 All games have a default bet amount of **1 OCT**:
 - Minimum: 1 OCT
 - Maximum: 1000 OCT
-
----
-
-## 📝 Recent Updates
-
-- ✅ Fixed history display for Dice and Slot games
-- ✅ Added pagination for transaction history
-- ✅ Implemented on-chain history fetching
-- ✅ Updated default bet amounts to 1 OCT
-- ✅ Added OCT coin icon to Slot game
-- ✅ Removed Blackjack game
-- ✅ Fixed game type filtering in history
 
 ---
 
